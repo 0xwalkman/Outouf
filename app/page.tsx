@@ -4,6 +4,7 @@ import { ArrowRight, BadgeDollarSign, Check, ChevronRight, Heart, Package, Searc
 import { useState } from "react";
 import "./commerce.css";
 import "./account.css";
+import "./catalog.css";
 
 const categories = [["Clothing", "Soft layers for every day", "lilac"], ["Shoes", "The pair that goes anywhere", "lemon"], ["Watches", "Small details, big feeling", "mint"], ["Bags", "Carry more of your world", "peach"], ["Jewelry", "Little things, greater meaning", "sky"], ["Perfume", "A more conscious ritual", "rose"]];
 const orders = [
@@ -13,7 +14,7 @@ const orders = [
 ];
 
 export default function Home() {
-  const [view, setView] = useState<"shop" | "wallet" | "community" | "orders" | "cart" | "account">("shop");
+  const [view, setView] = useState<"shop" | "wallet" | "community" | "orders" | "cart" | "account" | "catalog">("shop");
   const [notice, setNotice] = useState("Your wallet is ready for your next find.");
   const [validated, setValidated] = useState<string[]>(["#OTF-1046"]);
   const [cart, setCart] = useState<{ name: string; price: number; color: string; quantity: number }[]>([]);
@@ -28,18 +29,19 @@ export default function Home() {
       <div className="header-actions"><button className="round-button" aria-label="Search"><Search size={19} /></button><button className="wallet-chip" onClick={() => setView("wallet")}><span>◎</span> USDC&nbsp; 245.00 <ChevronRight size={15} /></button><button className="round-button" aria-label="Saved items"><Heart size={19} /></button><button className="round-button" aria-label="Account" onClick={() => setView("account")}><UserRound size={19} /></button><button className="round-button cart" aria-label="Shopping bag" onClick={() => setView("cart")}><ShoppingBag size={19} />{cart.length > 0 && <b>{cart.reduce((total, item) => total + item.quantity, 0)}</b>}</button></div>
     </header>
     <div className="status-line" role="status"><Sparkles size={15} /> {notice}</div>
-    {view === "shop" && <Shop onWallet={() => setView("wallet")} onCommunity={() => setView("community")} onAdd={addToCart} />}
+    {view === "shop" && <Shop onWallet={() => setView("wallet")} onCommunity={() => setView("community")} onCatalog={() => setView("catalog")} onAdd={addToCart} />}
     {view === "wallet" && <WalletView onShop={() => setView("shop")} setNotice={setNotice} />}
     {view === "community" && <CommunityView setNotice={setNotice} />}
     {view === "orders" && <OrdersView validated={validated} validateOrder={validateOrder} />}
     {view === "cart" && <CartView cart={cart} onUpdate={updateQuantity} onShop={() => setView("shop")} onCheckout={() => { if (!cart.length) return setNotice("Your bag is empty — add a piece before checking out."); setCart([]); setNotice("Payment confirmed with USDC. Your order is now pending validation."); setView("orders"); }} />}
     {view === "account" && <AccountView signedIn={signedIn} onGoogle={() => { setSignedIn(true); setNotice("Signed in successfully. Your wallet and rewards are now connected."); }} onShop={() => setView("shop")} />}
+    {view === "catalog" && <CatalogView onAdd={addToCart} onShop={() => setView("shop")} />}
   </main>;
 }
 
-function Shop({ onWallet, onCommunity, onAdd }: { onWallet: () => void; onCommunity: () => void; onAdd: (name: string, price: number, color: string) => void }) { return <>
+function Shop({ onWallet, onCommunity, onCatalog, onAdd }: { onWallet: () => void; onCommunity: () => void; onCatalog: () => void; onAdd: (name: string, price: number, color: string) => void }) { return <>
   <section className="hero"><img src="/outouf-hero.png" alt="Curated unbranded fashion accessories arranged in a warm studio" /><div className="hero-copy"><p className="eyebrow">CURATED FOR YOUR NEXT LOOK</p><h1>Discover your<br /><strong>next piece.</strong></h1><p>Clothes, shoes, bags, watches, jewelry, perfume and scarves—chosen for a brighter you.</p><button className="primary-button" onClick={onWallet}>SHOP WITH USDC <ArrowRight size={18} /></button><div className="hero-dots"><i className="active" /><i /><i /></div></div><button className="hero-arrow left" aria-label="Previous collection">‹</button><button className="hero-arrow right" aria-label="Next collection">›</button></section>
-  <section className="section-head"><h2>Fresh drops</h2><button>See all <ArrowRight size={16} /></button></section>
+  <section className="section-head"><h2>Fresh drops</h2><button onClick={onCatalog}>See all <ArrowRight size={16} /></button></section>
   <section className="category-grid" aria-label="Shop by category">{categories.map(([name, description, color], index) => <article className={`category-card ${color}`} key={name}><div className="category-object" aria-hidden="true"><span>{["✦", "◒", "◷", "◖", "✧", "◌"][index]}</span></div><div><p>{name}</p><small>{description}</small></div><button aria-label={`Browse ${name}`}><ArrowRight size={17} /></button></article>)}</section>
   <section className="section-head product-head"><div><p className="eyebrow">CURATED THIS WEEK</p><h2>Pieces to know now</h2></div><button>View all <ArrowRight size={16} /></button></section>
   <section className="product-rail"><Product name="Summer silk scarf" price={28} color="pale-pink" onAdd={onAdd} /><Product name="Soft leather shoulder bag" price={84} color="sand" onAdd={onAdd} /><Product name="Everyday gold watch" price={116} color="soft-blue" onAdd={onAdd} /></section>
@@ -47,6 +49,8 @@ function Shop({ onWallet, onCommunity, onAdd }: { onWallet: () => void; onCommun
 </>; }
 
 function Product({ name, price, color, onAdd }: { name: string; price: number; color: string; onAdd: (name: string, price: number, color: string) => void }) { return <article className="product-card"><div className={`product-art ${color}`}><span>✦</span></div><div className="product-info"><div><p>{name}</p><small>Available now</small></div><strong>{price}.00 USDC</strong></div><button className="add-button" onClick={() => onAdd(name, price, color)}>ADD TO BAG <Plus size={16} /></button></article>; }
+
+function CatalogView({ onAdd, onShop }: { onAdd: (name: string, price: number, color: string) => void; onShop: () => void }) { const [active, setActive] = useState("All"); const items = [["Silk scarf", 28, "pale-pink", "Accessories"], ["Shoulder bag", 84, "sand", "Bags"], ["Gold watch", 116, "soft-blue", "Watches"], ["Everyday loafer", 73, "lemon", "Shoes"], ["Fine chain", 39, "lilac", "Jewelry"], ["Soft knit", 54, "mint", "Clothing"]]; const visible = active === "All" ? items : items.filter((item) => item[3] === active); return <section className="app-page catalog-page"><div className="page-intro split"><div><p className="eyebrow">OUTOUF CATALOG</p><h1>Find your next piece.</h1><p>Every item is priced in USDC and added to your bag in one click.</p></div><button className="text-button" onClick={onShop}>← Home</button></div><div className="catalog-filters">{["All", "Clothing", "Shoes", "Bags", "Watches", "Jewelry", "Accessories"].map((category) => <button className={active === category ? "selected" : ""} onClick={() => setActive(category)} key={category}>{category}</button>)}</div><div className="catalog-grid">{visible.map(([name, price, color]) => <Product key={String(name)} name={String(name)} price={Number(price)} color={String(color)} onAdd={onAdd} />)}</div></section>; }
 
 function CartView({ cart, onUpdate, onShop, onCheckout }: { cart: { name: string; price: number; color: string; quantity: number }[]; onUpdate: (name: string, by: number) => void; onShop: () => void; onCheckout: () => void }) { const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0); return <section className="app-page cart-page"><div className="page-intro split"><div><p className="eyebrow">YOUR BAG</p><h1>Ready when you are.</h1><p>Checkout is paid with your available USDC balance.</p></div><button className="text-button" onClick={onShop}>← Continue shopping</button></div>{cart.length === 0 ? <div className="empty-bag"><ShoppingBag size={34} /><h2>Your bag is empty</h2><p>Find something that feels like you.</p><button className="primary-button" onClick={onShop}>BROWSE DROPS <ArrowRight size={17} /></button></div> : <div className="cart-layout"><div className="cart-items">{cart.map((item) => <article className="cart-item" key={item.name}><div className={`cart-thumb ${item.color}`}>✦</div><div><h2>{item.name}</h2><p>Curated drop · Ready to source</p><strong>{item.price}.00 USDC</strong></div><div className="quantity"><button onClick={() => onUpdate(item.name, -1)} aria-label="Decrease quantity"><Minus size={15} /></button><b>{item.quantity}</b><button onClick={() => onUpdate(item.name, 1)} aria-label="Increase quantity"><Plus size={15} /></button></div><button className="remove" onClick={() => onUpdate(item.name, -item.quantity)} aria-label={`Remove ${item.name}`}><Trash2 size={18} /></button></article>)}</div><aside className="checkout-card"><p className="eyebrow">ORDER SUMMARY</p><div><span>Items</span><b>{total}.00 USDC</b></div><div><span>Shipping</span><b>Calculated after sourcing</b></div><hr /><div className="total"><span>Total today</span><strong>{total}.00 USDC</strong></div><button className="primary-button" onClick={onCheckout}>PAY WITH USDC <ArrowRight size={17} /></button><small>Available wallet balance: 245.00 USDC</small></aside></div>}</section>; }
 
