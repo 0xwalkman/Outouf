@@ -1,65 +1,107 @@
 "use client";
-
-import { ArrowRight, BadgeDollarSign, Check, ChevronRight, Heart, Package, Search, ShoppingBag, Sparkles, UserRound, Wallet, Minus, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, ShoppingBag, UserRound, Wallet, Minus, Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArcWallet } from "./arc-wallet";
 import "./commerce.css";
 import "./account.css";
 import "./catalog.css";
+import "./live.css";
 
-const categories = [["Clothing", "Soft layers for every day", "lilac"], ["Shoes", "The pair that goes anywhere", "lemon"], ["Watches", "Small details, big feeling", "mint"], ["Bags", "Carry more of your world", "peach"], ["Jewelry", "Little things, greater meaning", "sky"], ["Perfume", "A more conscious ritual", "rose"]];
-const orders = [
-  { id: "#OTF-1048", customer: "Maya L.", item: "Everyday shoulder bag", total: "84.00 USDC", affiliate: "Nora’s link", status: "Ready to validate" },
-  { id: "#OTF-1047", customer: "Alex M.", item: "Satin scarf + sunglasses", total: "42.00 USDC", affiliate: "Direct", status: "Sourcing" },
-  { id: "#OTF-1046", customer: "Sofia R.", item: "Classic gold watch", total: "116.00 USDC", affiliate: "Nora’s link", status: "Validated" },
-];
-
-export default function Home() {
-  const [view, setView] = useState<"shop" | "wallet" | "community" | "orders" | "cart" | "account" | "catalog">("shop");
-  const [notice, setNotice] = useState("Your wallet is ready for your next find.");
-  const [validated, setValidated] = useState<string[]>(["#OTF-1046"]);
-  const [cart, setCart] = useState<{ name: string; price: number; color: string; quantity: number }[]>([]);
-  const [signedIn, setSignedIn] = useState(false);
-  const addToCart = (name: string, price: number, color: string) => { setCart((current) => { const existing = current.find((item) => item.name === name); return existing ? current.map((item) => item.name === name ? { ...item, quantity: item.quantity + 1 } : item) : [...current, { name, price, color, quantity: 1 }]; }); setNotice(`${name} added to your bag.`); };
-  const updateQuantity = (name: string, by: number) => setCart((current) => current.flatMap((item) => item.name !== name ? [item] : item.quantity + by < 1 ? [] : [{ ...item, quantity: item.quantity + by }]));
-  const validateOrder = (id: string) => { if (!validated.includes(id)) setValidated((x) => [...x, id]); setNotice(`Order ${id} validated — affiliate reward credited automatically.`); };
-  return <main className="site-shell">
-    <header className="topbar">
-      <button className="brand" onClick={() => setView("shop")} aria-label="Outouf home">OUTOUF</button>
-      <nav aria-label="Main navigation" className="main-nav"><button onClick={() => setView("shop")}>Shop</button><button onClick={() => setView("community")}>Community</button><button onClick={() => setView("orders")}>Orders</button></nav>
-      <div className="header-actions"><button className="round-button" aria-label="Search"><Search size={19} /></button><button className="wallet-chip" onClick={() => setView("wallet")}><span>◎</span> USDC&nbsp; 245.00 <ChevronRight size={15} /></button><button className="round-button" aria-label="Saved items"><Heart size={19} /></button><button className="round-button" aria-label="Account" onClick={() => setView("account")}><UserRound size={19} /></button><button className="round-button cart" aria-label="Shopping bag" onClick={() => setView("cart")}><ShoppingBag size={19} />{cart.length > 0 && <b>{cart.reduce((total, item) => total + item.quantity, 0)}</b>}</button></div>
-    </header>
-    <div className="status-line" role="status"><Sparkles size={15} /> {notice}</div>
-    {view === "shop" && <Shop onWallet={() => setView("wallet")} onCommunity={() => setView("community")} onCatalog={() => setView("catalog")} onAdd={addToCart} />}
-    {view === "wallet" && <WalletView onShop={() => setView("shop")} setNotice={setNotice} />}
-    {view === "community" && <CommunityView setNotice={setNotice} />}
-    {view === "orders" && <OrdersView validated={validated} validateOrder={validateOrder} />}
-    {view === "cart" && <CartView cart={cart} onUpdate={updateQuantity} onShop={() => setView("shop")} onCheckout={() => { if (!cart.length) return setNotice("Your bag is empty — add a piece before checking out."); setCart([]); setNotice("Payment confirmed with USDC. Your order is now pending validation."); setView("orders"); }} />}
-    {view === "account" && <AccountView signedIn={signedIn} onGoogle={() => { setSignedIn(true); setNotice("Signed in successfully. Your wallet and rewards are now connected."); }} onShop={() => setView("shop")} />}
-    {view === "catalog" && <CatalogView onAdd={addToCart} onShop={() => setView("shop")} />}
-  </main>;
+type Product = { id: string; title: string; category: string; priceUsdc: number };
+type BagItem = Product & { quantity: number; active: number };
+type Member = { name: string; email: string };
+type Order = { id: string; status: string; amountUsdc: number };
+const categories = ["Clothing", "Shoes", "Watches", "Bags", "Jewelry", "Perfume", "Scarves"];
+const colors = ["lilac", "lemon", "mint", "peach", "sky", "rose", "lilac"];
+const money = (micros: number) => (micros / 1_000_000).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, { cache: "no-store", ...init });
+  const data = await response.json() as T & { error?: string };
+  if (!response.ok) throw new Error(data.error || "Service unavailable. Please try again.");
+  return data;
 }
 
-function Shop({ onWallet, onCommunity, onCatalog, onAdd }: { onWallet: () => void; onCommunity: () => void; onCatalog: () => void; onAdd: (name: string, price: number, color: string) => void }) { return <>
-  <section className="hero"><img src="/outouf-hero.png" alt="Curated unbranded fashion accessories arranged in a warm studio" /><div className="hero-copy"><p className="eyebrow">CURATED FOR YOUR NEXT LOOK</p><h1>Discover your<br /><strong>next piece.</strong></h1><p>Clothes, shoes, bags, watches, jewelry, perfume and scarves—chosen for a brighter you.</p><button className="primary-button" onClick={onWallet}>CONNECT &amp; SHOP <ArrowRight size={18} /></button><div className="hero-dots"><i className="active" /><i /><i /></div></div><button className="hero-arrow left" aria-label="Previous collection">‹</button><button className="hero-arrow right" aria-label="Next collection">›</button></section>
-  <section className="section-head"><h2>Fresh drops</h2><button onClick={onCatalog}>See all <ArrowRight size={16} /></button></section>
-  <section className="category-grid" aria-label="Shop by category">{categories.map(([name, description, color], index) => <article className={`category-card ${color}`} key={name}><div className="category-object" aria-hidden="true"><span>{["✦", "◒", "◷", "◖", "✧", "◌"][index]}</span></div><div><p>{name}</p><small>{description}</small></div><button aria-label={`Browse ${name}`}><ArrowRight size={17} /></button></article>)}</section>
-  <section className="section-head product-head"><div><p className="eyebrow">CURATED THIS WEEK</p><h2>Pieces to know now</h2></div><button>View all <ArrowRight size={16} /></button></section>
-  <section className="product-rail"><Product name="Summer silk scarf" price={28} color="pale-pink" onAdd={onAdd} /><Product name="Soft leather shoulder bag" price={84} color="sand" onAdd={onAdd} /><Product name="Everyday gold watch" price={116} color="soft-blue" onAdd={onAdd} /></section>
-  <section className="earn-banner"><div className="earn-portrait" aria-hidden="true">✦</div><div><p className="eyebrow">SHARE • EARN • GROW</p><h2>Earn with OUTOUF</h2><p>Share what you love. When a friend’s order is validated, your USDC reward lands automatically.</p></div><button className="primary-button" onClick={onCommunity}>VIEW YOUR REWARDS <ArrowRight size={18} /></button><div className="earn-steps"><span><b>1</b> Share</span><span><b>2</b> Shop</span><span><b>3</b> Earn</span></div></section>
-</>; }
+export default function Home() {
+  const [view, setView] = useState("shop");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [cart, setCart] = useState<BagItem[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [member, setMember] = useState<Member | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState("");
+  const [accountError, setAccountError] = useState("");
+  const [bagError, setBagError] = useState("");
+  const [orderError, setOrderError] = useState("");
+  const [notice, setNotice] = useState("Private preview · Arc testnet · Purchases are not enabled");
+  const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("All");
 
-function Product({ name, price, color, onAdd }: { name: string; price: number; color: string; onAdd: (name: string, price: number, color: string) => void }) { return <article className="product-card"><div className={`product-art ${color}`}><span>✦</span></div><div className="product-info"><div><p>{name}</p><small>Available now</small></div><strong>{price}.00 USDC</strong></div><button className="add-button" onClick={() => onAdd(name, price, color)}>ADD TO BAG <Plus size={16} /></button></article>; }
+  async function loadCatalog() {
+    setLoading(true); setCatalogError("");
+    try { setProducts((await request<{ products: Product[] }>("/api/products")).products); }
+    catch (error) { setCatalogError((error as Error).message); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => {
+    void loadCatalog();
+    request<{ user: Member | null }>("/api/account").then(async data => {
+      setMember(data.user);
+      if (data.user) {
+        await Promise.all([
+          request<{ items: BagItem[] }>("/api/cart").then(data => setCart(data.items)).catch(error => setBagError(error.message)),
+          request<{ orders: Order[] }>("/api/orders").then(data => setOrders(data.orders)).catch(error => setOrderError(error.message))
+        ]);
+      }
+    }).catch(error => setAccountError(error.message));
+  }, []);
 
-function CatalogView({ onAdd, onShop }: { onAdd: (name: string, price: number, color: string) => void; onShop: () => void }) { const [active, setActive] = useState("All"); const items = [["Silk scarf", 28, "pale-pink", "Accessories"], ["Shoulder bag", 84, "sand", "Bags"], ["Gold watch", 116, "soft-blue", "Watches"], ["Everyday loafer", 73, "lemon", "Shoes"], ["Fine chain", 39, "lilac", "Jewelry"], ["Soft knit", 54, "mint", "Clothing"]]; const visible = active === "All" ? items : items.filter((item) => item[3] === active); return <section className="app-page catalog-page"><div className="page-intro split"><div><p className="eyebrow">OUTOUF CATALOG</p><h1>Find your next piece.</h1><p>Every item is priced in USDC and added to your bag in one click.</p></div><button className="text-button" onClick={onShop}>← Home</button></div><div className="catalog-filters">{["All", "Clothing", "Shoes", "Bags", "Watches", "Jewelry", "Accessories"].map((category) => <button className={active === category ? "selected" : ""} onClick={() => setActive(category)} key={category}>{category}</button>)}</div><div className="catalog-grid">{visible.map(([name, price, color]) => <Product key={String(name)} name={String(name)} price={Number(price)} color={String(color)} onAdd={onAdd} />)}</div></section>; }
+  async function saveBag(productId: string, quantity: number) {
+    if (!member) { setView("account"); setNotice("Sign in to save your bag."); return; }
+    setBusy(true); setBagError("");
+    try {
+      const result = await request<{ items: BagItem[] }>("/api/cart", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId, quantity }) });
+      setCart(result.items); setNotice(quantity ? "Your bag has been saved." : "Item removed from your bag.");
+    } catch (error) { setBagError((error as Error).message); setNotice((error as Error).message); }
+    finally { setBusy(false); }
+  }
 
-function CartView({ cart, onUpdate, onShop, onCheckout }: { cart: { name: string; price: number; color: string; quantity: number }[]; onUpdate: (name: string, by: number) => void; onShop: () => void; onCheckout: () => void }) { const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0); return <section className="app-page cart-page"><div className="page-intro split"><div><p className="eyebrow">YOUR BAG</p><h1>Ready when you are.</h1><p>Checkout is paid with your available USDC balance.</p></div><button className="text-button" onClick={onShop}>← Continue shopping</button></div>{cart.length === 0 ? <div className="empty-bag"><ShoppingBag size={34} /><h2>Your bag is empty</h2><p>Find something that feels like you.</p><button className="primary-button" onClick={onShop}>BROWSE DROPS <ArrowRight size={17} /></button></div> : <div className="cart-layout"><div className="cart-items">{cart.map((item) => <article className="cart-item" key={item.name}><div className={`cart-thumb ${item.color}`}>✦</div><div><h2>{item.name}</h2><p>Curated drop · Ready to source</p><strong>{item.price}.00 USDC</strong></div><div className="quantity"><button onClick={() => onUpdate(item.name, -1)} aria-label="Decrease quantity"><Minus size={15} /></button><b>{item.quantity}</b><button onClick={() => onUpdate(item.name, 1)} aria-label="Increase quantity"><Plus size={15} /></button></div><button className="remove" onClick={() => onUpdate(item.name, -item.quantity)} aria-label={`Remove ${item.name}`}><Trash2 size={18} /></button></article>)}</div><aside className="checkout-card"><p className="eyebrow">ORDER SUMMARY</p><div><span>Items</span><b>{total}.00 USDC</b></div><div><span>Shipping</span><b>Calculated after sourcing</b></div><hr /><div className="total"><span>Total today</span><strong>{total}.00 USDC</strong></div><button className="primary-button" onClick={onCheckout}>PAY WITH USDC <ArrowRight size={17} /></button><small>Available wallet balance: 245.00 USDC</small></aside></div>}</section>; }
-
-function AccountView({ signedIn, onGoogle, onShop }: { signedIn: boolean; onGoogle: () => void; onShop: () => void }) { return <section className="app-page account-page"><div className="account-panel"><div className="account-mark">O</div><p className="eyebrow">{signedIn ? "WELCOME BACK" : "YOUR OUTOUF ACCOUNT"}</p><h1>{signedIn ? "Everything, in one place." : "Make your next piece yours."}</h1><p>{signedIn ? "Your wallet, orders and affiliate rewards are connected to this account." : "Sign in to save your drops, fund your USDC wallet and earn from your referral link."}</p>{signedIn ? <div className="account-summary"><div><small>Available</small><b>245.00 USDC</b></div><div><small>Affiliate earnings</small><b>38.60 USDC</b></div><div><small>Orders</small><b>3 active</b></div></div> : <><button className="google-button" onClick={onGoogle}><span>G</span> Continue with Google</button><small className="account-note">By continuing, you agree to the OUTOUF terms and privacy policy.</small></>}<button className="text-button account-back" onClick={onShop}>← Back to shopping</button></div><aside className="account-aside"><p className="eyebrow">MEMBER BENEFITS</p><div><b>01</b><p>One wallet for deposits, purchases and rewards.</p></div><div><b>02</b><p>Orders update in real time from validation to delivery.</p></div><div><b>03</b><p>Share your link and receive USDC when orders validate.</p></div></aside></section>; }
-
-function WalletView({ onShop, setNotice }: { onShop: () => void; setNotice: (text: string) => void }) { const [connected, setConnected] = useState(false); return <section className="app-page wallet-page"><div className="page-intro"><p className="eyebrow">ARC SELF-CUSTODY WALLET</p><h1>{connected ? "Your Arc wallet" : "Your USDC, your keys."}</h1><p>Connect an EVM wallet to pay from USDC directly on Arc. OUTOUF never holds your funds or private keys.</p></div><div className="wallet-layout"><article className="balance-card"><p>{connected ? "ARC WALLET BALANCE" : "ARC NETWORK"}</p><h2>{connected ? <>245.00 <span>USDC</span></> : <>Arc <span>USDC native gas</span></>}</h2><div><button className="primary-button" onClick={() => { setConnected(true); setNotice("Wallet connected on Arc. You control your funds."); }}>{connected ? "WALLET CONNECTED" : "CONNECT WALLET"} <ArrowRight size={17} /></button><button className="secondary-button" onClick={() => setNotice("Arc testnet selected. Live transactions need a wallet provider and RPC key.")}>ARC TESTNET</button></div></article><article className="activity-card"><h2>How it works</h2><Activity icon={<Wallet size={18} />} name="Connect your wallet" note="EVM wallet via WalletConnect" amount="01" /><Activity icon={<ShoppingBag size={18} />} name="Pay in USDC" note="You approve each checkout" amount="02" /><Activity icon={<BadgeDollarSign size={18} />} name="Receive rewards" note="Affiliate payout after validation" amount="03" positive /></article></div><button className="text-button" onClick={onShop}>← Back to shopping</button></section>; }
-function Activity({ icon, name, note, amount, positive = false }: { icon: React.ReactNode; name: string; note: string; amount: string; positive?: boolean }) { return <div className="activity"><span className={`activity-icon ${positive ? "reward" : ""}`}>{icon}</span><p>{name}<small>{note}</small></p><b className={positive ? "positive" : ""}>{amount}</b></div>; }
-
-function CommunityView({ setNotice }: { setNotice: (text: string) => void }) { return <section className="app-page community-page"><div className="page-intro"><p className="eyebrow">OUTOUF COMMUNITY</p><h1>Style shared, rewards earned.</h1><p>Follow looks you love and build your own referral circle.</p></div><div className="community-grid"><article className="referral-card"><p className="eyebrow">YOUR REFERRAL LINK</p><h2>outouf.com/nora</h2><p>12 friends shopped through your link this month.</p><button className="primary-button" onClick={() => setNotice("Your referral link was copied.")}>COPY LINK</button></article><article className="rewards-card"><p className="eyebrow">AFFILIATE EARNINGS</p><h2>38.60 <span>USDC</span></h2><p>12.40 USDC is available after today’s validated order.</p><div className="progress"><i /></div></article></div><h2 className="feed-heading">From the community</h2><div className="feed"><Feed initials="ML" color="coral" title="Maya" detail="shared a look" sub="2h ago · Bags & scarves" likes="24" /><Feed initials="JR" color="blue" title="Jordan" detail="earned a reward" sub="5h ago · Order validated" likes="18" /><Feed initials="SK" color="yellow" title="Sofia" detail="saved a drop" sub="1d ago · Watches" likes="31" /></div></section>; }
-function Feed({ initials, color, title, detail, sub, likes }: { initials: string; color: string; title: string; detail: string; sub: string; likes: string }) { return <article><div className={`avatar ${color}`}>{initials}</div><p><b>{title}</b> {detail}<small>{sub}</small></p><span>♡ {likes}</span></article>; }
-
-function OrdersView({ validated, validateOrder }: { validated: string[]; validateOrder: (id: string) => void }) { return <section className="app-page orders-page"><div className="page-intro split"><div><p className="eyebrow">OPERATIONS</p><h1>Orders received</h1><p>Validate an order to release its affiliate reward automatically.</p></div><button className="secondary-button"><Package size={17} /> Export orders</button></div><div className="order-table" role="table" aria-label="Orders received"><div className="table-row table-head" role="row"><span>Order</span><span>Customer</span><span>Items</span><span>Affiliate</span><span>Total</span><span>Status</span></div>{orders.map((order) => { const done = validated.includes(order.id); return <div className="table-row" role="row" key={order.id}><strong>{order.id}</strong><span>{order.customer}</span><span>{order.item}</span><span>{order.affiliate}</span><strong>{order.total}</strong><span>{done ? <b className="validated"><Check size={14} /> Validated</b> : order.status === "Sourcing" ? <b className="sourcing">Sourcing</b> : <button className="validate-button" onClick={() => validateOrder(order.id)}>Validate order</button>}</span></div>; })}</div></section>; }
+  const visible = products.filter(p => (category === "All" || p.category === category) && p.title.toLowerCase().includes(query.toLowerCase()));
+  const browse = (selected = "All") => { setCategory(selected); setView("catalog"); };
+  return <main className="site-shell">
+    <header className="topbar">
+      <button className="brand" onClick={() => setView("shop")}>OUTOUF</button>
+      <nav aria-label="Main navigation" className="main-nav">
+        {[["shop", "Shop"], ["community", "Community"], ["orders", "My orders"]].map(([id, label]) => <button key={id} aria-current={view === id ? "page" : undefined} onClick={() => setView(id)}>{label}</button>)}
+      </nav>
+      <div className="header-actions">
+        <button className="wallet-chip" onClick={() => setView("wallet")}><Wallet size={17} /> Arc wallet</button>
+        <button className="round-button" aria-label="Account" onClick={() => setView("account")}><UserRound size={19} /></button>
+        <button className="round-button cart" aria-label="Shopping bag" onClick={() => setView("cart")}><ShoppingBag size={19} />{cart.length > 0 && <b>{cart.reduce((n, p) => n + p.quantity, 0)}</b>}</button>
+      </div>
+    </header>
+    <nav className="mobile-nav" aria-label="Mobile navigation">{["shop", "community", "orders"].map(id => <button key={id} onClick={() => setView(id)}>{id === "orders" ? "My orders" : id}</button>)}</nav>
+    <div className="status-line" role="status">{notice}</div>
+    {view === "shop" && <>
+      <section className="hero"><img src="/outouf-hero.png" alt="Fashion accessories in a warm peach studio" /><div className="hero-copy"><p className="eyebrow">CURATED FOR YOUR NEXT LOOK</p><h1>Discover your<br /><strong>next piece.</strong></h1><p>Clothes, shoes, bags, watches, jewelry, perfume and scarves. A world of possibilities.</p><button className="primary-button" onClick={() => browse()}>EXPLORE THE COLLECTION <ArrowRight size={18} /></button></div></section>
+      <section className="section-head"><h2>Find your style</h2><button onClick={() => browse()}>View catalog <ArrowRight size={16} /></button></section>
+      <section className="category-grid" aria-label="Categories">{categories.map((name, index) => <article className={`category-card ${colors[index]}`} key={name}><div className="category-object" aria-hidden="true">✦</div><p>{name}</p><button aria-label={`Browse ${name}`} onClick={() => browse(name)}><ArrowRight size={17} /></button></article>)}</section>
+      <section className="earn-banner"><div className="earn-portrait" aria-hidden="true">✦</div><div><p className="eyebrow">SHARE • EARN • GROW</p><h2>Style worth sharing.</h2><p>Our affiliate program is being built around one rule: rewards are released when an order is validated.</p></div><button className="primary-button" onClick={() => setView("community")}>DISCOVER THE PROGRAM <ArrowRight size={17} /></button></section>
+    </>}
+    {view === "catalog" && <section className="app-page">
+      <div className="page-intro"><p className="eyebrow">THE COLLECTION</p><h1>Your next find.</h1><p>Browse products published to the OUTOUF catalog.</p></div>
+      <label className="search-field">Search products<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search by name…" /></label>
+      <div className="catalog-filters">{["All", ...categories].map(c => <button key={c} aria-pressed={category === c} className={category === c ? "selected" : ""} onClick={() => setCategory(c)}>{c}</button>)}</div>
+      {loading ? <p role="status">Loading the collection…</p> : catalogError ? <div role="alert"><p>{catalogError}</p><button className="secondary-button" onClick={loadCatalog}>Retry catalog</button></div> : !visible.length ? <div className="empty-bag"><ShoppingBag size={32} /><h2>{products.length ? "No matching pieces" : "The collection is on its way"}</h2><p>{products.length ? "Try another category or search." : "Supplier products have not been published yet. No sample products are available for purchase."}</p></div> : <div className="catalog-grid">{visible.map(p => <article className="product-card" key={p.id}><div className={`product-art ${colors[Math.max(0, categories.indexOf(p.category))]}`}><span aria-hidden="true">✦</span></div><div className="product-info"><div><p>{p.title}</p><small>{p.category} · Image pending</small></div><strong>{money(p.priceUsdc)} USDC</strong></div><button className="add-button" disabled={busy} onClick={() => saveBag(p.id, (cart.find(c => c.id === p.id)?.quantity || 0) + 1)}>ADD TO BAG <Plus size={16} /></button></article>)}</div>}
+    </section>}
+    {view === "wallet" && <ArcWallet />}
+    {view === "cart" && <section className="app-page"><div className="page-intro"><p className="eyebrow">YOUR SAVED BAG</p><h1>A little closer.</h1><p>Your bag is saved to your site account. Checkout is not live yet.</p></div>
+      {bagError && <p role="alert">{bagError}</p>}
+      {!member ? <button className="primary-button" onClick={() => setView("account")}>SIGN IN TO VIEW YOUR BAG</button> : !cart.length ? <div className="empty-bag"><ShoppingBag size={32} /><h2>Your bag is empty</h2><button className="primary-button" onClick={() => browse()}>EXPLORE THE COLLECTION</button></div> : <div className="cart-layout"><div className="cart-items">{cart.map(p => <article className="cart-item" key={p.id}><div><h2>{p.title}</h2><p>{p.active ? p.category : "Currently unavailable"}</p><strong>{money(p.priceUsdc)} USDC</strong></div><div className="quantity"><button disabled={busy} aria-label={`Decrease ${p.title}`} onClick={() => saveBag(p.id, p.quantity - 1)}><Minus size={15} /></button><b>{p.quantity}</b><button disabled={busy || p.quantity >= 99 || !p.active} aria-label={`Increase ${p.title}`} onClick={() => saveBag(p.id, p.quantity + 1)}><Plus size={15} /></button></div><button disabled={busy} className="remove" aria-label={`Remove ${p.title}`} onClick={() => saveBag(p.id, 0)}><Trash2 size={18} /></button></article>)}</div><aside className="checkout-card"><p className="eyebrow">ITEM SUBTOTAL</p><h2>{money(cart.reduce((n, p) => n + p.priceUsdc * p.quantity, 0))} USDC</h2><p>Shipping and final availability must be confirmed before payment.</p><button className="primary-button" disabled>CHECKOUT NOT YET ENABLED</button><p>No funds will be requested or transferred.</p></aside></div>}
+    </section>}
+    {view === "account" && <section className="app-page account-page"><div className="account-panel"><div className="account-mark">O</div><p className="eyebrow">YOUR OUTOUF ACCOUNT</p><h1>{member ? `Welcome, ${member.name}.` : "Make it yours."}</h1>{accountError && <p role="alert">{accountError}</p>}<p>{member ? "Your private preview uses your existing site login. Your saved bag belongs to this account." : "Use the site login to access your saved bag."}</p>{!member && <a className="primary-button" href="/signin-with-chatgpt?return_to=%2F">SIGN IN WITH CHATGPT</a>}<p>Google sign-in is not configured. Connecting a wallet does not sign you in or link it to your account.</p></div></section>}
+    {view === "orders" && <section className="app-page"><div className="page-intro"><p className="eyebrow">YOUR PURCHASES</p><h1>My orders</h1><p>Only orders belonging to your account appear here.</p></div>{orderError ? <p role="alert">{orderError}</p> : !member ? <button className="primary-button" onClick={() => setView("account")}>SIGN IN TO VIEW ORDERS</button> : !orders.length ? <div className="empty-bag"><ShoppingBag size={32} /><h2>No orders yet</h2><p>Checkout is not enabled. There are no simulated purchases in this list.</p></div> : orders.map(o => <article className="activity-card" key={o.id}><h2>{o.id}</h2><p>{o.status}</p><strong>{money(o.amountUsdc)} USDC</strong></article>)}</section>}
+    {view === "community" && <section className="app-page"><div className="page-intro"><p className="eyebrow">THE OUTOUF CIRCLE</p><h1>Good style travels.</h1><p>Share your discoveries. Build your community.</p></div><div className="community-grid"><article className="referral-card"><h2>Affiliate program</h2><p>Coming soon. Referral tracking, order validation and verified on-chain payouts must be connected before rewards can be earned.</p><p>No live referral link has been issued.</p></article><article className="rewards-card"><h2>Real activity only.</h2><p>Member posts and earnings will appear here when the community launches. No invented balances, members or returns.</p></article></div></section>}
+    <footer className="preview-footer">OUTOUF · Private development preview · No live payments</footer>
+  </main>;
+}

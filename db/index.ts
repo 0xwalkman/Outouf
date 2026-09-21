@@ -2,6 +2,11 @@ import { env } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./schema";
 
+export function getDatabase() {
+  if (!env.DB) throw new Error("Database unavailable");
+  return env.DB;
+}
+
 export function getDb() {
   if (!env.DB) {
     throw new Error(
