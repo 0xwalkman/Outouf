@@ -1,0 +1,82 @@
+[
+  {
+    "category": "Clothing",
+    "id": "888xm888-257197571",
+    "title": "Acne Studios Jacket",
+    "brand": "Acne Studios",
+    "image": "/api/catalog-image?path=%2F888xm888%2F1b44774dde%2F8b5711b0.jpg",
+    "price": 309
+  },
+  {
+    "category": "Shoes",
+    "id": "cf1688-256720822",
+    "title": "New Balance KITH NB 2011 Ronnie Fieg",
+    "brand": "New Balance",
+    "image": "/catalog/images/65e2b0dd4046cb5d93c0e87c.jpeg",
+    "price": 759
+  },
+  {
+    "category": "Bags",
+    "id": "jygy2-243841923",
+    "title": "Loewe 652672",
+    "brand": "Loewe",
+    "image": "/api/catalog-image?path=%2Fjygy2%2F2727daf629%2F28dbabf4.jpeg",
+    "price": 2899
+  },
+  {
+    "category": "Watches",
+    "id": "jmshop88-120655629",
+    "title": "Cartier Watch",
+    "brand": "Cartier",
+    "image": "/api/catalog-image?path=%2Fjmshop88%2F35943361%2Fdef160ca.jpg",
+    "price": 4999
+  },
+  {
+    "category": "Jewelry",
+    "id": "351164-70877900",
+    "title": "AHKAH Bracelet",
+    "brand": "AHKAH",
+    "image": "/api/catalog-image?path=%2F351164%2F9d320282%2F15219a3e.jpg",
+    "price": 2289
+  },
+  {
+    "category": "Perfume",
+    "id": "jmshop88-201305909",
+    "title": "Althair Perfume",
+    "brand": "Althair",
+    "image": "/api/catalog-image?path=%2Fjmshop88%2F5d525a2e%2Fc71b2825.jpg",
+    "price": 439
+  },
+  {
+    "category": "Scarves",
+    "id": "jmshop88-255457945",
+    "title": "Burberry Scarf",
+    "brand": "Burberry",
+    "image": "/api/catalog-image?path=%2Fjmshop88%2F4c983e366d%2Ffeb879a0.jpg",
+    "price": 309
+  },
+  {
+    "category": "Bed Sheets",
+    "id": "jmshop88-182313638",
+    "title": "Burberry Blanket",
+    "brand": "Burberry",
+    "image": "/api/catalog-image?path=%2Fjmshop88%2Fce8f8f28%2F5b66edb2.jpg",
+    "price": 2499
+  },
+  {
+    "category": "Belts",
+    "id": "jmshop88-256894604",
+    "title": "Hermès Belt",
+    "brand": "Hermès",
+    "image": "/api/catalog-image?path=%2Fjmshop88%2F98d1aae646%2F000575ff.jpg",
+    "price": 309
+  },
+  {
+    "category": "Accessories",
+    "id": "jmshop88-250122905",
+    "title": "Alo Hat",
+    "brand": "Alo",
+    "image": "/api/catalog-image?path=%2Fjmshop88%2F2a91b5e890%2F1302fa5c.jpg",
+    "price": 499
+  }
+]

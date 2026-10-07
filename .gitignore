@@ -46,3 +46,5 @@ next-env.d.ts
 /outputs/
 /work/
 outouf-site.tgz
+# Generated supplier catalog and photos. Import checkpoints stay in /work/.
+/public/catalog/

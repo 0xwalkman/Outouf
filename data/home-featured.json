@@ -1,0 +1,42 @@
+[
+  {
+    "id": "888xm888-257198312",
+    "title": "Ralph Lauren Shirt",
+    "brand": "Ralph Lauren",
+    "category": "Clothing",
+    "image": "/api/catalog-image?path=%2F888xm888%2Fe7bd5fc461%2Fa14b168b.jpg",
+    "price": 429
+  },
+  {
+    "id": "cf1688-256967697",
+    "title": "Nike Zoom Kobe 4 Protro Mambacita",
+    "brand": "Nike",
+    "category": "Shoes",
+    "image": "/catalog/images/a3d264896a9c35aa07ad707a.jpeg",
+    "price": 619
+  },
+  {
+    "id": "jygy2-257319525",
+    "title": "Gucci 855251",
+    "brand": "Gucci",
+    "category": "Bags",
+    "image": "/api/catalog-image?path=%2Fjygy2%2F26d28dab0c%2F1d1d7c32.jpeg",
+    "price": 3149
+  },
+  {
+    "id": "jmshop88-136922843",
+    "title": "Audemars Piguet Watch",
+    "brand": "Audemars Piguet",
+    "category": "Watches",
+    "image": "/api/catalog-image?path=%2Fjmshop88%2F35dbf285%2F7de5784a.jpg",
+    "price": 4999
+  },
+  {
+    "id": "jmshop88-253818172",
+    "title": "Prada Hat",
+    "brand": "Prada",
+    "category": "Accessories",
+    "image": "/api/catalog-image?path=%2Fjmshop88%2F1cbd7f8aef%2F3d6b4abf.jpg",
+    "price": 359
+  }
+]

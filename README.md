@@ -1,5 +1,62 @@
 # vinext-starter
 
+## Outouf supplier catalog (local preview)
+
+The local catalog importer is `scripts/import-yupoo-index.mjs`. It imports the
+cf1688 shoe and mujichaopaia clothing catalogs into `public/catalog/`, with a resumable source cache and an audit
+report under ignored `work/yupoo/`. It does not use Apify or an AI API.
+
+Set `YUPOO_PASSWORD` in the process environment, then run:
+
+```sh
+node scripts/import-yupoo-index.mjs
+```
+
+For clothing, set `YUPOO_CLOTHING_PASSWORD` in ignored `.env.local`, then run
+`node --env-file=.env.local scripts/import-yupoo-index.mjs --supplier=mujichaopaia`.
+Each import replaces only that supplier's entries and preserves the other supplier.
+The additional clothing supplier `888xm888` uses `YUPOO_888XM888_PASSWORD`
+and `--supplier=888xm888`. Numeric ranges without an explicit list of sizes
+are shown as a range requiring confirmation for this supplier.
+The public Alina catalog uses `--supplier=alina-fashion-store2` and needs no
+password. Its compact SML labels are expanded and numeric product codes remain
+searchable as style numbers.
+Doufuyi is public swimwear. Run `node scripts/import-doufuyi-categories.mjs`
+to refresh its brand/type mapping, then import with `--supplier=doufuyi`.
+Size-chart albums are kept outside the shopping grid; sizes are not inferred
+from unreviewed photos.
+The public XJ Clothes catalog uses `--supplier=hhhhhh789-123`.
+Run `node scripts/import-xjclothes-categories.mjs` first to map its underwear,
+socks, bathrobes, and lingerie categories.
+Jifan's public belt catalog uses `--supplier=jifan01`; prepare category metadata
+with `node scripts/import-jifan-categories.mjs`. Belt widths are descriptive
+measurements, not selectable lengths. Packaging and size guides are references.
+The public jewelry supplier `351164` uses `--supplier=351164`, after
+`node scripts/import-351164-categories.mjs`. It separates Jewelry, Watches,
+and Accessories; only explicit ring-size lists become variants, preserving
+US labels when stated. Supplier material/purity claims are not imported as verified facts.
+Run imports sequentially. Clothing galleries load directly on demand, avoiding
+hundreds of thousands of individual static detail files. The canceled mujixieye
+shoe supplier is not enabled. Clothing sizes are parsed from explicit text;
+sizes present only inside photos require review and are not guessed.
+
+Use `--refresh` to fetch a fresh supplier snapshot; otherwise the import resumes
+from cached listing pages. Set the same variable in ignored `.env.local` for the
+Next.js local preview's product-gallery endpoint. Never commit catalog passwords.
+
+The importer preserves distinct supplier album IDs even when their titles match,
+because those entries can represent different colors or supplier versions. It
+separates size charts and reference albums, reports empty albums and missing sizes,
+and leaves ambiguous brands under Other brands. Prices and stock are unconfirmed;
+these entries are browsing previews, not purchasable inventory.
+
+Full galleries load on demand through an allowlisted supplier endpoint. Photos
+are served through `/api/catalog-image`, restricted to the configured suppliers' image paths.
+Except for already downloaded sample albums, photos still depend on the supplier;
+they are not an independent permanent archive. Generated catalog files are ignored
+by Git. Before hosted deployment, copy catalog data and media into D1/R2 and
+configure the gallery secret if keeping the supplier-backed gallery workflow.
+
 A clean full-stack starter running on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.
 
 ## Prerequisites
@@ -124,3 +181,66 @@ The portable build runs Vinext directly without a host `timeout` command. The ma
 
 - [vinext Documentation](https://github.com/cloudflare/vinext)
 - [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+
+## Yupoo Store catalog
+
+`node --max-old-space-size=4096 scripts/import-yupoo-store.mjs` imports the public
+`www.yupoo.store` catalog, traversing each top-level category and deduplicating
+album IDs. It preserves existing suppliers. Listing and detail caches live in
+`work/yupoo/yupoo-store`; run with `--all-details` to prefetch every gallery and
+index every available size for collection-wide filtering.
+
+By default, recent products have cached details; other galleries and sizes load
+on opening a product through the allowlisted supplier endpoint. Those loaded
+sizes become available in the current collection's size filter. Images stream
+through a proxy restricted to the seller's image CDN. No prices or stock are
+inferred, and purchases remain disabled in the local preview.
+
+### Assigned DKK retail prices
+
+`node scripts/assign-catalog-prices.mjs` assigns stable, varied retail prices by
+normalized model (shared across color variants). These are user-assigned prices, not verified supplier costs or a
+120% supplier markup. Shoes are DKK 600–800 and ordinary clothing stays under DKK 800, swimwear
+under DKK 500, jewelry under DKK 3,000, and padded/down outerwear is DKK 1,200.
+Unspecified categories retain their existing price status. The storefront uses
+the same pricing rules for newly imported products and preserves a displayed
+price while supplier photos and sizes load. Re-run the script after imports to
+materialize those prices in the catalog JSON.
+
+
+Bag supplier `jygy2` is imported with `node scripts/import-yupoo-index.mjs --supplier=jygy2`.
+Bag measurements are displayed as dimensions, not selectable clothing sizes.
+Assigned bag prices use the longest listed dimension: up to 20 cm = DKK 1,980;
+25 = 2,250; 30 = 2,500; 35 = 2,800; 40 = 3,100; above 40 = 3,500.
+Missing or unusable dimensions receive DKK 2,700. Unlabelled supplier bag
+measurements are treated as centimetres for pricing. Re-run the price assignment
+script after reimporting to persist prices in the catalog.
+
+Bed Sheets uses only jmshop88 category 3019121. Refresh with
+`node scripts/import-bed-sheets.mjs`; it validates category counts and saves full
+galleries locally as product metadata. Towels and blankets retain their product
+types within the requested Bed Sheets category. Component measurements are
+kept separate; duvet and pillow measurements are not separate purchase sizes.
+All products in Bed Sheets have the user-specified fixed price of DKK 2,500.
+
+For the full mixed jmshop88 catalog, cache the supplier index, run
+`node scripts/import-jmshop-categories.mjs`, then
+`node scripts/import-yupoo-index.mjs --supplier=jmshop88` and
+`node scripts/assign-catalog-prices.mjs`. The category map separates clothing,
+bags, belts, watches, perfume, jewelry, scarves, accessories, and bedding.
+Existing bedding metadata is preserved in `data/jmshop88-bedding.mjs`.
+The bedding-only refresh preserves other jmshop88 categories.
+
+Additional assigned prices: belts and hats DKK 300–500 per normalized model;
+sunglasses DKK 300/500/750/1,000 by brand tier; umbrellas DKK 280; keyrings
+(including keychains) DKK 250; scarves DKK 300; perfume DKK 450. Watches use
+DKK 5,000 for the high-end brand list in `catalog-pricing.mjs`, DKK 4,000 otherwise.
+Unspecified ties and miscellaneous accessories keep their existing price status.
+
+Retail pricing refinement: the earlier price points now act as base prices.
+A stable model-based adjustment of approximately ±4% produces prices ending in
+9 kr, rounded within ±5% of the base and clipped to all category limits. Shoes
+remain at least DKK 600; bag size tiers and watch brand tiers remain intact.
+Matching models and color variants share prices; bag sizes may differ.
+This supersedes the earlier fixed display prices. Verify with
+`node scripts/test-catalog-pricing.mjs`.
